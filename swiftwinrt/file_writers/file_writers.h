@@ -43,6 +43,9 @@ namespace swiftwinrt
     {
         // Replace the module name placeholders with regex due to no string.replace(string, string)
         std::string text{ reinterpret_cast<const char*>(data.data()), data.size() };
+        // Templates are embedded with whatever line endings the source checkout had (e.g. CRLF with
+        // core.autocrlf=true), so normalize to LF to match generated code and keep the output deterministic.
+        std::erase(text, '\r');
         text = std::regex_replace(text, std::regex("SUPPORT_MODULE"), settings.support);
         write_file(path, std::span(reinterpret_cast<const std::byte*>(text.data()), text.size()));
     }
