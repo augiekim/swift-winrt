@@ -1,0 +1,9 @@
+# clangd setup for macOS. Run `cmake --preset macos` first to generate build/macos/compile_commands.json.
+# On Windows, build/macos doesn't exist, so clangd falls back to its normal compile_commands.json search.
+# Windows presets don't export one; the Microsoft C/C++ extension with CMake Tools is the usual setup there.
+CompileFlags:
+  CompilationDatabase: build/macos
+  # Without an explicit sysroot, clangd on macOS appends -isysroot <MacOSX.sdk>, which clang-cl treats as an input file.
+  Add: [--sysroot=/]
+  # Drop the build's PCH so clangd doesn't depend on a possibly stale .pch file.
+  Remove: [/Yu*, /Fp*]

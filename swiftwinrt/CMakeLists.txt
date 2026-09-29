@@ -73,12 +73,28 @@ target_sources(swiftwinrt PUBLIC
     code_writers/class_writers.cpp
     code_writers/type_writers.cpp
     code_writers/struct_writers.cpp
-    resources.rc
  )
 
-# Make resources.rc depend on the files it embeds
+# llvm-rc on non-Windows hosts can't parse resources.rc (backslash paths, '+' in names),
+# so those builds compile a converted copy generated at build time.
+if(CMAKE_HOST_WIN32)
+    set(SWIFTWINRT_RC_FILE resources.rc)
+else()
+    set(SWIFTWINRT_RC_FILE ${CMAKE_CURRENT_BINARY_DIR}/resources_non_windows.rc)
+    add_custom_command(
+        OUTPUT ${SWIFTWINRT_RC_FILE}
+        COMMAND ${CMAKE_COMMAND}
+            -DINPUT=${CMAKE_CURRENT_SOURCE_DIR}/resources.rc
+            -DOUTPUT=${SWIFTWINRT_RC_FILE}
+            -P ${CMAKE_SOURCE_DIR}/cmake/generate_non_windows_rc.cmake
+        DEPENDS resources.rc ${CMAKE_SOURCE_DIR}/cmake/generate_non_windows_rc.cmake
+        COMMENT "Generating resources_non_windows.rc")
+endif()
+target_sources(swiftwinrt PRIVATE ${SWIFTWINRT_RC_FILE})
+
+# Make the resource file depend on the files it embeds
 file(GLOB_RECURSE SUPPORT_FILES CONFIGURE_DEPENDS Resources/*)
-set_property(SOURCE resources.rc APPEND PROPERTY OBJECT_DEPENDS ${SUPPORT_FILES})
+set_property(SOURCE ${SWIFTWINRT_RC_FILE} APPEND PROPERTY OBJECT_DEPENDS ${SUPPORT_FILES})
 
 target_include_directories(swiftwinrt PUBLIC ${MicrosoftWindowsWinMD_INCLUDE_DIR} ${PROJECT_BINARY_DIR} ${PROJECT_SOURCE_DIR})
 target_compile_definitions(swiftwinrt PUBLIC "SWIFTWINRT_VERSION_STRING=\"${SWIFTWINRT_VERSION_STRING}\"")

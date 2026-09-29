@@ -58,6 +58,24 @@
                 "CMAKE_CXX_COMPILER": "cl",
                 "SWIFT_DEBUG_MODE": "pdb"
             }
+        },
+        {
+            "name": "macos",
+            "displayName": "macOS (cross-compile swiftwinrt)",
+            "description": "Cross-compiles swiftwinrt.exe for Windows x64 from macOS using LLVM and Windows SDK/CRT files from xwin (see cmake/macos-cross-windows.cmake). Tests are skipped.",
+            "binaryDir": "${sourceDir}/build/macos",
+            "installDir": "${sourceDir}/out/macos",
+            "inherits": [ "base" ],
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Darwin"
+            },
+            "toolchainFile": "${sourceDir}/cmake/macos-cross-windows.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_EXPORT_COMPILE_COMMANDS": true
+            }
         }
     ],
     "buildPresets": [
@@ -72,6 +90,10 @@
       {
         "name": "release-pdb",
         "configurePreset": "release-pdb"
+      },
+      {
+        "name": "macos",
+        "configurePreset": "macos"
       }
     ]
 }

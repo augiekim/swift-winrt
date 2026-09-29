@@ -56,7 +56,11 @@ namespace swiftwinrt
             GetModuleHandle(NULL), RESOURCE_TYPE_SWIFT_SUPPORT_FILE_STR, /* make_lowercase: */ true);
         for (const auto& support_file : support_files)
         {
-            auto path = dir_path / (support_file.first + ".swift");
+            // resources_non_windows.rc uses '.' in place of '+' in names (e.g. Array.FromAbi -> Array+FromAbi.swift)
+            // since llvm-rc doesn't accept '+'. Names from resources.rc have no '.', so this is a no-op there.
+            auto file_name = support_file.first;
+            std::replace(file_name.begin(), file_name.end(), '.', '+');
+            auto path = dir_path / (file_name + ".swift");
             fill_template_placeholders_to_file(support_file.second, path);
         }
     }

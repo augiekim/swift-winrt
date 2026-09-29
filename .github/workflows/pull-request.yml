@@ -2,13 +2,55 @@ name: PR
 
 on:
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
+  macos-build:
+    name: swiftwinrt (macOS cross-compile)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install tools
+        run: brew install llvm lld xwin ninja
+
+      - name: Get xwin version
+        id: xwin
+        run: echo "version=$(xwin --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Windows SDK and CRT
+        id: xwin-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.xwin
+          key: xwin-${{ steps.xwin.outputs.version }}
+
+      - name: Download Windows SDK and CRT
+        if: steps.xwin-cache.outputs.cache-hit != 'true'
+        run: xwin --accept-license --temp splat --output ~/.xwin
+
+      - name: Build
+        run: |
+          cmake --preset macos
+          cmake --build --preset macos
+
+      - name: Upload swiftwinrt.exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: swiftwinrt-macos
+          path: |
+            build/macos/swiftwinrt/swiftwinrt.exe
+            build/macos/swiftwinrt/swiftwinrt.pdb
+          if-no-files-found: error
+
   build:
     name: Swift/WinRT Debug
+    needs: macos-build
     uses: ./.github/workflows/callable-windows-build.yml
     secrets: inherit
     with:
       config: debug
       publish-nuget: false
+      compare-macos-build: true

@@ -9,12 +9,16 @@ if(SWIFT_DEBUG_MODE STREQUAL "pdb")
     add_link_options(LINKER:-debug)
 endif()
 
-if(NOT EXISTS "$ENV{WindowsSdkBinPath}${CMAKE_SYSTEM_VERSION}")
+if(CMAKE_HOST_WIN32 AND NOT EXISTS "$ENV{WindowsSdkBinPath}${CMAKE_SYSTEM_VERSION}")
     message(FATAL_ERROR "Windows SDK Version appears not to be installed:\n  Missing folder: $ENV{WindowsSdkBinPath}${CMAKE_SYSTEM_VERSION}")
 endif()
 
 add_subdirectory(swiftwinrt)
-add_subdirectory(tests)
+
+# The tests need the Swift toolchain for Windows, so they can only be built on a Windows host
+if(CMAKE_HOST_WIN32)
+    add_subdirectory(tests)
+endif()
 
 if (NOT DEFINED ENV{NUGET_PACKAGE_VERSION})
     set(NUGET_PACKAGE_VERSION 0.1.0)

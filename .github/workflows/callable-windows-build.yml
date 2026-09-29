@@ -11,12 +11,16 @@ on:
         required: true
       nuget-version:
         description: "3 part version of the nuget package (Major.Minor.Patch)"
-        default: '99.99.99'
+        default: "99.99.99"
         type: string
       version_prerelease_identifier:
-        description: 'Semantic versioning prerelease identifier (including hyphen)'
-        default: ''
+        description: "Semantic versioning prerelease identifier (including hyphen)"
+        default: ""
         type: string
+      compare-macos-build:
+        description: "Whether to check that the macOS-built swiftwinrt.exe (artifact 'swiftwinrt-macos') generates the same output"
+        default: false
+        type: boolean
 
 jobs:
   build:
@@ -37,7 +41,7 @@ jobs:
         with:
           swift-version: swift-6.2-release
           swift-build: 6.2-RELEASE
-      
+
       - name: Configure CMake
         shell: pwsh
         run: |
@@ -49,6 +53,40 @@ jobs:
           cmake --build --preset ${{ inputs.config }}
           cmake --build --preset ${{ inputs.config }} --target install
           cmake --build --preset ${{ inputs.config }} --target nuget
+
+      - name: Download macOS-built swiftwinrt
+        if: inputs.compare-macos-build
+        uses: actions/download-artifact@v5
+        with:
+          name: swiftwinrt-macos
+          path: ${{ runner.temp }}\swiftwinrt-macos
+
+      - name: Compare macOS-built swiftwinrt output
+        if: inputs.compare-macos-build
+        shell: pwsh
+        run: |
+          $buildDir = "build\${{ inputs.config }}"
+          # Same arguments the build uses, minus -output and -log
+          $rsp = Get-Content "$buildDir\tests\test_component\SwiftWinRT.rsp" | Where-Object { $_ -notmatch '^-(output|log)\b' }
+          $exes = @{
+            windows = "$buildDir\swiftwinrt\swiftwinrt.exe"
+            macos = "${{ runner.temp }}\swiftwinrt-macos\swiftwinrt.exe"
+          }
+          foreach ($name in $exes.Keys) {
+            $out = "${{ runner.temp }}\out-$name"
+            $rspFile = "${{ runner.temp }}\$name.rsp"
+            ($rsp + "-output $out") | Set-Content $rspFile
+            & $exes[$name] "@$rspFile"
+            if ($LASTEXITCODE -ne 0) {
+              # Re-run under cdb to print the call stack at the first access violation
+              $cdb = "${env:ProgramFiles(x86)}\Windows Kits\10\Debuggers\x64\cdb.exe"
+              if (Test-Path $cdb) {
+                & $cdb -G -lines -c "sxe av; g; .lastevent; kP 50; q" $exes[$name] "@$rspFile"
+              }
+              throw "$name swiftwinrt.exe failed with exit code $LASTEXITCODE"
+            }
+          }
+          git diff --no-index --exit-code --stat "${{ runner.temp }}\out-windows" "${{ runner.temp }}\out-macos"
 
       - name: Upload swiftwinrt logs on failure
         uses: actions/upload-artifact@5d5d22a31266ced268874388b861e4b58bb5c2f3
@@ -67,4 +105,3 @@ jobs:
         with:
           name: Nuget
           path: ${{ github.workspace }}\build\${{ inputs.config }}\*.nupkg
-
