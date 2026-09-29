@@ -101,7 +101,7 @@ jobs:
           $failed = @()
           foreach ($name in $names[1..($names.Count - 1)]) {
             Write-Host "Comparing $($names[0]) with $name"
-            git diff --no-index --exit-code --stat "${{ runner.temp }}\out-$($names[0])" "${{ runner.temp }}\out-$name"
+            git -c core.autocrlf=false diff --no-index --exit-code --stat "${{ runner.temp }}\out-$($names[0])" "${{ runner.temp }}\out-$name"
             if ($LASTEXITCODE -ne 0) { $failed += $name }
           }
           if ($failed) { throw "Output differs from $($names[0]): $($failed -join ', ')" }
