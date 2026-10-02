@@ -54,6 +54,29 @@ or, for a one-liner (on powershell);
 
 While it is possible to use this one-liner for your inner-loop, there is a known issue which causes the swift-winrt build to be dirtied every time, and re-running swift-winrt in debug mode is very slow! This is why we set `CMAKE_SKIP_INSTALL_ALL_DEPENDENCY` in our [CMakePresets.json](./CMakePresets.json). So when you can building/testing in `release` mode will be quicker. Generally, this is the golden path forward for when you don't need to debug tests. However, if you need to debug tests, then you will likely want to build debug. See [below](#optimal-developer-workflow-for-debugging-tests) for optimal `debug` config workflow.
 
+### Building swift-winrt on macOS
+
+The code generator (`swiftwinrt.exe`) can be cross-compiled from macOS for checking that the C++ compiles and for editor support. The tests need a Windows host, so they are skipped, and the resulting executable can only run on Windows.
+
+One-time setup (Homebrew packages only; no system configuration changes):
+
+```
+git submodule update --init --recursive
+brew install llvm lld xwin
+xwin --accept-license --temp splat --output ~/.xwin
+```
+
+`xwin` downloads the Windows SDK and MSVC CRT headers and libraries, and `--accept-license` accepts Microsoft's license terms for them. `--temp` deletes the ~1 GB download cache when done, instead of leaving it in `./.xwin-cache`. To keep them somewhere other than `~/.xwin`, set `XWIN_DIR`. To use an LLVM other than Homebrew's, set `LLVM_ROOT`. See [cmake/macos-cross-windows.cmake](./cmake/macos-cross-windows.cmake) for details.
+
+Build:
+
+```
+cmake --preset macos
+cmake --build --preset macos
+```
+
+For editor support in VS Code, use the [clangd extension](https://marketplace.visualstudio.com/items?itemName=llvm-vs-code-extensions.vscode-clangd). The repository's [.clangd](./.clangd) points it at `build/macos/compile_commands.json`, which `cmake --preset macos` generates. Disable the Microsoft C/C++ extension's IntelliSense (`"C_Cpp.intelliSenseEngine": "disabled"`), since it looks up the Windows SDK headers with exact case and can't find many of them on macOS's case-insensitive file system.
+
 ### Debugging Tests in Visual Studio Code
 
 The test code (written in Swift) is easily buildable and debuggable in VS Code. You can build using `Ctrl+Shift+B` and then debug via the standard VSCode debug window (or press `F5`).
